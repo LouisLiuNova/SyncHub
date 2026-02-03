@@ -167,6 +167,10 @@ async def delete_tag(
 ):
     tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
     if tag:
+        # --- fix: 禁止删除 General 标签 ---
+        if tag.name == "General":
+            raise HTTPException(status_code=400, detail="Cannot delete default tag")
+        # -----------------------------------
         db.delete(tag)
         db.commit()
         await manager.broadcast("update:tags")
