@@ -1,0 +1,43 @@
+services:
+  # 数据库服务
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: synchub
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - synchub-net
+
+  # 后端 API 服务
+  server:
+    build: ./server
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://user:pass@db:5432/synchub
+    volumes:
+      - file_storage:/app/uploads
+    depends_on:
+      - db
+    networks:
+      - synchub-net
+
+  # 前端 React 服务
+  client:
+    build: ./client
+    ports:
+      - "7410:80"
+    depends_on:
+      - server
+    networks:
+      - synchub-net
+
+volumes:
+  postgres_data:
+  file_storage:
+
+networks:
+  synchub-net:
