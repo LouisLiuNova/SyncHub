@@ -24,10 +24,12 @@ app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // --- 数据库连接 (PostgreSQL) ---
+console.log('Connecting to PostgreSQL database...',process.env.DATABASE_URL);
 const sequelize = new Sequelize(process.env.DATABASE_URL || 'postgres://user:pass@db:5432/synchub', {
   dialect: 'postgres',
   logging: false,
 });
+console.log('Sequelize instance created.',sequelize.config);
 
 // --- 模型定义 ---
 const User = sequelize.define('User', {
