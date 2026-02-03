@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SyncHub - 跨设备协作</title>
+    <script src="/static/tailwindcss.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        techBlue: '#007AFF',
+                        techDark: '#1F2937',
+                        techGray: '#F3F4F6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        [x-cloak] { display: none !important; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+    </style>
+    <!-- 使用 Alpine.js 处理轻量级交互，也可以用原生JS，这里为了代码简洁使用 Alpine CDN -->
+    <script defer src="/static/alpine.min.js"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans h-screen flex flex-col" x-data="appData()" x-init="initApp()">
+
+    <!-- 登录模态框 -->
+    <div x-show="!token" class="fixed inset-0 bg-gray-900 bg-opacity-90 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-8">
+            <h2 class="text-2xl font-bold text-center text-techDark mb-6">SyncHub 登录</h2>
+            <div class="space-y-4">
+                <input type="text" x-model="loginForm.username" placeholder="用户名" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-techBlue focus:ring-2 focus:ring-techBlue/20 outline-none transition">
+                <input type="password" x-model="loginForm.password" placeholder="密码" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-techBlue focus:ring-2 focus:ring-techBlue/20 outline-none transition">
+                <div class="flex gap-4">
+                    <button @click="login()" class="flex-1 bg-techBlue text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition">登录</button>
+                    <button @click="register()" class="flex-1 bg-white text-techBlue border border-techBlue py-3 rounded-lg font-semibold hover:bg-blue-50 transition">注册</button>
+                </div>
+                <p x-text="loginMsg" class="text-center text-red-500 text-sm mt-2"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 顶部导航 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-techBlue rounded-lg flex items-center justify-center text-white font-bold">S</div>
+            <h1 class="text-xl font-bold text-techDark tracking-tight">SyncHub</h1>
+        </div>
+        <div class="flex items-center gap-4" x-show="token">
+            <div class="flex items-center gap-2 text-sm text-gray-500">
+                <span class="w-2 h-2 rounded-full" :class="wsConnected ? 'bg-green-500' : 'bg-red-500'"></span>
+                <span x-text="wsConnected ? '实时连接' : '离线'"></span>
+            </div>
+            <span class="text-gray-600 font-medium" x-text="currentUser"></span>
+            <button @click="logout()" class="text-sm text-red-500 hover:text-red-700">退出</button>
+        </div>
+    </nav>
+
+    <!-- 主体内容 -->
+    <main class="flex-1 overflow-hidden flex flex-col max-w-5xl mx-auto w-full p-4 sm:p-6" x-show="token">
+        
+        <!-- 标签页切换 -->
+        <div class="flex space-x-1 bg-gray-200 p-1 rounded-xl mb-6 w-fit">
+            <button @click="activeTab = 'text'" :class="activeTab === 'text' ? 'bg-white text-techBlue shadow-sm' : 'text-gray-500 hover:text-gray-700'" class="px-6 py-2 rounded-lg text-sm font-medium transition-all">文本剪贴板</button>
+            <button @click="activeTab = 'file'" :class="activeTab === 'file' ? 'bg-white text-techBlue shadow-sm' : 'text-gray-500 hover:text-gray-700'" class="px-6 py-2 rounded-lg text-sm font-medium transition-all">文件共享</button>
+        </div>
+
+        <!-- 文本剪贴板区域 -->
+        <div x-show="activeTab === 'text'" class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+                <textarea x-model="newClipboard" class="w-full h-24 p-3 bg-gray-50 rounded-lg border-none focus:ring-2 focus:ring-techBlue/20 resize-none text-sm" placeholder="在此粘贴或输入文本..."></textarea>
+                <div class="flex justify-between items-center mt-3">
+                    <input x-model="newTag" type="text" placeholder="标签 (可选)" class="bg-gray-50 px-3 py-1.5 rounded text-xs border-none focus:ring-1 focus:ring-techBlue w-32">
+                    <button @click="submitClipboard()" class="bg-techBlue text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-blue-600 transition">保存文本</button>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-3 pr-2 pb-4">
+                <template x-for="item in clipboardItems" :key="item.id">
+                    <div class="bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition group">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-blue-50 text-techBlue text-xs px-2 py-1 rounded font-medium" x-text="item.tag"></span>
+                                <span class="text-xs text-gray-400" x-text="item.user + ' • ' + item.created_at"></span>
+                            </div>
+                            <button @click="copyText(item.content)" class="text-gray-400 hover:text-techBlue opacity-0 group-hover:opacity-100 transition">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+                        <pre class="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-2 rounded" x-text="item.content"></pre>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <!-- 文件共享区域 -->
+        <div x-show="activeTab === 'file'" class="flex-1 flex flex-col overflow-hidden">
+            <div 
+                class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-4 transition hover:border-techBlue hover:bg-blue-50 cursor-pointer relative"
+                @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false"
+                @drop.prevent="handleDrop($event)"
+                :class="dragOver ? 'border-techBlue bg-blue-50' : ''"
+            >
+                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileSelect($event)">
+                <div class="pointer-events-none">
+                    <svg class="w-10 h-10 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="text-gray-600 font-medium">点击或拖拽文件至此上传</p>
+                    <p class="text-xs text-gray-400 mt-1">支持任意格式文件</p>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-2 pr-2 pb-4">
+                <template x-for="file in fileItems" :key="file.id">
+                    <div class="bg-white p-3 rounded-lg border border-gray-100 shadow-sm flex items-center justify-between hover:bg-gray-50 transition">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-500">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate" x-text="file.filename"></p>
+                                <p class="text-xs text-gray-500" x-text="file.size + ' • ' + file.user + ' • ' + file.created_at"></p>
+                            </div>
+                        </div>
+                        <a :href="'/api/download/' + file.id" class="text-techBlue hover:bg-blue-50 p-2 rounded-full transition" title="下载">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        </a>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function appData() {
+            return {
+                token: localStorage.getItem('synchub_token') || '',
+                currentUser: localStorage.getItem('synchub_user') || '',
+                activeTab: 'text',
+                loginForm: { username: '', password: '' },
+                loginMsg: '',
+                clipboardItems: [],
+                fileItems: [],
+                newClipboard: '',
+                newTag: '',
+                dragOver: false,
+                ws: null,
+                wsConnected: false,
+
+                initApp() {
+                    if (this.token) {
+                        this.fetchData();
+                        this.connectWS();
+                    }
+                },
+
+                async login() {
+                    const formData = new FormData();
+                    formData.append('username', this.loginForm.username);
+                    formData.append('password', this.loginForm.password);
+                    try {
+                        const res = await fetch('/token', { method: 'POST', body: formData });
+                        if (!res.ok) throw new Error('登录失败');
+                        const data = await res.json();
+                        this.token = data.access_token;
+                        this.currentUser = this.loginForm.username;
+                        localStorage.setItem('synchub_token', this.token);
+                        localStorage.setItem('synchub_user', this.currentUser);
+                        this.fetchData();
+                        this.connectWS();
+                    } catch (e) {
+                        this.loginMsg = '用户名或密码错误';
+                    }
+                },
+
+                async register() {
+                    const formData = new FormData();
+                    formData.append('username', this.loginForm.username);
+                    formData.append('password', this.loginForm.password);
+                    try {
+                        const res = await fetch('/register', { method: 'POST', body: formData });
+                        if (!res.ok) throw new Error('注册失败');
+                        this.loginMsg = '注册成功，请登录';
+                    } catch (e) {
+                        this.loginMsg = '用户已存在或输入无效';
+                    }
+                },
+
+                logout() {
+                    this.token = '';
+                    this.currentUser = '';
+                    localStorage.removeItem('synchub_token');
+                    localStorage.removeItem('synchub_user');
+                    if (this.ws) this.ws.close();
+                },
+
+                async fetchData() {
+                    const headers = { 'Authorization': `Bearer ${this.token}` };
+                    
+                    // Fetch Clipboard
+                    const resClip = await fetch('/api/clipboard', { headers });
+                    if (resClip.ok) this.clipboardItems = await resClip.json();
+                    
+                    // Fetch Files
+                    const resFile = await fetch('/api/files', { headers });
+                    if (resFile.ok) this.fileItems = await resFile.json();
+                },
+
+                async submitClipboard() {
+                    if (!this.newClipboard.trim()) return;
+                    const formData = new FormData();
+                    formData.append('content', this.newClipboard);
+                    formData.append('tag', this.newTag || 'General');
+                    
+                    await fetch('/api/clipboard', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.token}` },
+                        body: formData
+                    });
+                    this.newClipboard = '';
+                    this.fetchData();
+                },
+
+                async copyText(text) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        alert('已复制到剪贴板');
+                    } catch (err) {
+                        console.error('复制失败', err);
+                    }
+                },
+
+                handleFileSelect(e) {
+                    const file = e.target.files[0];
+                    if (file) this.uploadFile(file);
+                },
+
+                handleDrop(e) {
+                    this.dragOver = false;
+                    const file = e.dataTransfer.files[0];
+                    if (file) this.uploadFile(file);
+                },
+
+                async uploadFile(file) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.token}` },
+                        body: formData
+                    });
+                    this.fetchData();
+                },
+
+                connectWS() {
+                    if (this.ws) this.ws.close();
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+                    
+                    this.ws.onopen = () => { this.wsConnected = true; };
+                    this.ws.onclose = () => { 
+                        this.wsConnected = false; 
+                        setTimeout(() => this.token && this.connectWS(), 3000); // Reconnect
+                    };
+                    this.ws.onmessage = (event) => {
+                        if (event.data.startsWith('update:')) {
+                            this.fetchData();
+                            // 简单的通知效果
+                            const badge = document.createElement('div');
+                            badge.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50 animate-bounce';
+                            badge.innerText = '收到新内容';
+                            document.body.appendChild(badge);
+                            setTimeout(() => badge.remove(), 2000);
+                        }
+                    };
+                }
+            }
+        }
+    </script>
+</body>
+</html>

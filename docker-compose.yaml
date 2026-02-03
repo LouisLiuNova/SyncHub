@@ -1,0 +1,16 @@
+services:
+  synchub:
+    build: .
+    container_name: synchub
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/app/uploads  # 持久化文件
+      - data:/app/data        # 持久化数据库
+    environment:
+      - TZ=Asia/Shanghai
+  
+volumes:
+  uploads:
+  data:

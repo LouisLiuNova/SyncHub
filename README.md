@@ -1,129 +1,57 @@
-# SyncHub - 跨设备剪贴板与文件共享中心
+# SyncHub - 局域网跨设备协作中心
 
-![Project Status](https://img.shields.io/badge/Status-Active-success)
-![Docker](https://img.shields.io/badge/Docker-Compose-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Static Badge](https://img.shields.io/badge/vibed_by-Google_Gemini-orange)
+SyncHub 是一个轻量级、自托管的剪贴板和文件共享工具。专为需要在多台机器（Windows, Mac, Linux）之间频繁共享文本和文件的开发者设计。
 
-**SyncHub** 是一个简单、高效的全栈解决方案，专为需要在多台机器（开发机、测试机、办公电脑）之间频繁共享文本片段和文件的开发者及 IT 人员设计。
+## ✨ 功能特性
 
-无需安装任何客户端软件，只需一个浏览器，即可实现局域网内的无缝同步。
+- **📋 文本剪贴板**：带标签和时间戳的历史记录，一键复制。
+- **📁 文件共享**：拖拽上传，实时列表更新，高速下载。
+- **🔐 用户认证**：私有化部署，安全可靠。
+- **⚡ 实时同步**：基于 WebSocket，多端操作毫秒级同步。
+- **🐳 Docker 部署**：一键启动，数据持久化。
 
----
+## 🛠️ 技术栈
 
-## ✨ 核心功能
+- **Backend**: Python FastAPI, SQLite, SQLAlchemy
+- **Frontend**: HTML5, Tailwind CSS, Alpine.js
+- **Deployment**: Docker Compose
 
-*   **📋 智能云剪贴板**
-    *   支持多用户保存文本片段。
-    *   自动记录时间戳、上传者，并支持代码高亮显示。
-    *   一键复制内容到本地剪贴板。
-*   **📂 文件极速共享**
-    *   支持拖拽上传任意格式文件。
-    *   实时显示文件大小、上传时间和上传者信息。
-    *   基于 Docker Volume 的持久化存储。
-*   **⚡ 实时协同**
-    *   基于 **Socket.io** 的实时推送技术。
-    *   当有新文本或文件上传时，所有在线设备立即收到通知并自动刷新列表。
-*   **🔐 用户认证**
-    *   轻量级身份验证系统。
-    *   支持“首次登录即注册”的便捷模式，适合内部团队快速上手。
-
----
-
-## 🛠 技术栈
-
-本项目采用现代化的全栈架构，确保高性能与易维护性：
-
-| 模块 | 技术选型 | 说明 |
-| :--- | :--- | :--- |
-| **Frontend** | React + Vite | 极速构建，组件化开发 |
-| **UI Framework** | Tailwind CSS | 现代化原子类 CSS，响应式设计 |
-| **Backend** | Node.js + Express | 高效的 I/O 处理 |
-| **Real-time** | Socket.io | WebSocket 双向通信 |
-| **Database** | PostgreSQL | 健壮的关系型数据存储 |
-| **Deployment** | Docker & Nginx | 容器化部署，开箱即用 |
-
----
-
-## 🚀 快速开始 (部署指南)
+## 🚀 快速开始
 
 ### 前置要求
-*   已安装 [Docker](https://www.docker.com/) 和 [Docker Compose](https://docs.docker.com/compose/)。
+- 安装 [Docker](https://www.docker.com/) 和 [Docker Compose](https://docs.docker.com/compose/)。
 
-### 1. 获取代码
-将项目代码下载或克隆到本地目录 `synchub`。
+### 部署步骤
 
-### 2. 启动服务
-在项目根目录下打开终端，运行以下命令：
+1. **克隆或下载代码**
+   确保目录结构如下：
+   ```text
+   synchub/
+   ├── app/
+   │   ├── __init__.py
+   │   ├── main.py
+   │   ├── auth.py
+   │   ├── models.py
+   │   ├── database.py
+   │   ├── templates/index.html
+   │   └── static/
+   ├── Dockerfile
+   ├── docker-compose.yml
+   └── requirements.txt
+    ```
+2. 启动服务
+    在项目根目录下运行：
+    ```shell
+    docker-compose up -d --build
+    ```
+3. 访问应用
+    打开浏览器访问：`http://localhost:8000`.如果是局域网其他电脑访问，请使用服务器 IP，例如 `http://192.168.1.100:8000`
 
-```bash
-docker-compose up --build -d
-```
-
-等待容器构建并启动完成（首次运行需要下载镜像，可能需要几分钟）。
-
-### 3. 访问应用
-*   **本机访问**: 打开浏览器访问 `http://localhost:7410`
-*   **局域网访问**: 使用部署机器的 IP 地址，例如 `http://192.168.1.100:7410`
-
----
-
-## 📖 使用指南
-
-### 1. 登录/注册
-系统设计为**内部便捷模式**。
-*   在登录界面输入任意**用户名**和**密码**。
-*   如果用户名不存在，系统将自动为您注册并登录。
-*   如果用户名已存在，则校验密码。
-
-### 2. 文本共享
-1.  点击顶部导航栏或标签页切换到 **"文本剪贴板"**。
-2.  在输入框粘贴或输入代码/文本，点击 **"发布文本"**。
-3.  其他设备会收到弹窗通知，列表自动更新。
-4.  点击列表项右上角的 **复制图标** 即可获取内容。
-
-### 3. 文件共享
-1.  切换到 **"文件共享"** 标签页。
-2.  点击虚线区域选择文件，或直接将文件 **拖拽** 到该区域。
-3.  上传完成后，点击右侧 **下载图标** 即可保存文件。
-
----
-
-## 📂 目录结构
-
-```text
-synchub/
-├── docker-compose.yml      # 容器编排配置
-├── server/                 # 后端服务
-│   ├── Dockerfile
-│   ├── index.js            # API 与 Socket 逻辑
-│   └── uploads/            # 文件存储目录 (映射到宿主机)
-└── client/                 # 前端应用
-    ├── Dockerfile
-    ├── nginx.conf          # Nginx 代理配置
-    └── src/                # React 源代码
-```
-
----
-
-## ⚙️ 配置说明
-
-如果您需要修改端口或数据库配置，请编辑 `docker-compose.yml`：
-
-*   **前端端口**: 修改 `client` 服务的 `ports` (默认 `8080:80`)。
-*   **后端端口**: 修改 `server` 服务的 `ports` (默认 `3000:3000`)。
-*   **数据持久化**:
-    *   数据库数据存储在 Docker Volume `postgres_data` 中。
-    *   上传的文件存储在 `./server/uploads` 目录中。
-
----
-
-## ⚠️ 注意事项
-
-1.  **安全性**: 当前配置适用于受信任的局域网环境。如果部署在公网，建议修改 `server/index.js` 中的 `JWT_SECRET` 并配置 HTTPS。
-2.  **文件大小限制**: 默认受限于 Nginx 和 Express 的配置，如需上传超大文件（>50MB），需调整 Nginx 配置中的 `client_max_body_size`。
-
-
-## 📄 许可证
-
-Vibed by Google Gemini. MIT License
+## 使用说明
+1. 注册账户：首次进入点击登录框下方的“注册”按钮。
+2. 共享文本：在“文本剪贴板”页签输入内容，支持添加标签（如：代码、链接）。
+3. 共享文件：切换到“文件共享”，拖拽文件到上传区域。
+## 注意事项
+- 默认数据库存储在 ./data 目录。
+- 上传的文件存储在 ./uploads 目录。
+- 请勿在公网环境直接暴露端口，建议配合 Nginx 和 HTTPS 使用。
