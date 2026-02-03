@@ -10,6 +10,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - synchub-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # 后端 API 服务
   server:
@@ -21,7 +26,8 @@ services:
     volumes:
       - file_storage:/app/uploads
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - synchub-net
 
