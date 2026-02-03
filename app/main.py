@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse
 from starlette.requests import Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy import func
 
 from . import models, database, auth
 
@@ -149,9 +150,17 @@ async def create_tag(
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(auth.get_current_user),
 ):
-    if db.query(models.Tag).filter(models.Tag.name == tag.name).first():
+    # --- 修改：使用 func.lower 进行大小写不敏感查重 ---
+    if (
+        db.query(models.Tag)
+        .filter(func.lower(models.Tag.name) == tag.name.lower())
+        .first()
+    ):
         raise HTTPException(status_code=400, detail="Tag already exists")
+
     bg, txt = get_random_color()
+    # 存入数据库时保留用户输入的大小写格式，或者你可以强制 tag.name.upper()
+    # 这里我们保留原样，通过前端 CSS 控制显示为大写
     new_tag = models.Tag(name=tag.name, color_bg=bg, color_text=txt)
     db.add(new_tag)
     db.commit()
