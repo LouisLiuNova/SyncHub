@@ -4,247 +4,139 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SyncHub - 局域网协作</title>
-    
-    <!-- 1. 引入本地 Tailwind CSS 脚本 -->
     <script src="/static/tailwindcss.js"></script>
-    
-    <!-- 2. 配置 Tailwind (使用系统字体栈) -->
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { 
-                        // 使用系统原生字体栈，无需下载字体文件，且在各平台显示效果极佳
-                        sans: [
-                            'system-ui', 
-                            '-apple-system', 
-                            'BlinkMacSystemFont', 
-                            '"Segoe UI"', 
-                            'Roboto', 
-                            '"Helvetica Neue"', 
-                            'Arial', 
-                            'sans-serif'
-                        ] 
-                    },
+                    fontFamily: { sans: ['system-ui', '-apple-system', 'sans-serif'] },
                     colors: {
-                        primary: {
-                            50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd',
-                            400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8',
-                            800: '#1e40af', 900: '#1e3a8a',
-                        },
-                        dark: {
-                            bg: '#0f172a',
-                            surface: '#1e293b',
-                            border: '#334155'
-                        }
+                        primary: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        dark: { bg: '#0f172a', surface: '#1e293b', border: '#334155' }
                     },
-                    animation: {
-                        'fade-in-up': 'fadeInUp 0.3s ease-out forwards',
-                    },
-                    keyframes: {
-                        fadeInUp: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
-                        }
-                    }
+                    animation: { 'fade-in-up': 'fadeInUp 0.3s ease-out forwards' },
+                    keyframes: { fadeInUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
                 }
             }
         }
     </script>
-    
-    <!-- 3. 预先执行主题逻辑，防止闪烁 -->
     <script>
         (function() {
             const savedTheme = localStorage.getItem('synchub_theme') || 'system';
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'dark' || (savedTheme === 'system' && systemDark)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
+            if (savedTheme === 'dark' || (savedTheme === 'system' && systemDark)) document.documentElement.classList.add('dark');
         })();
     </script>
-
     <style>
         [x-cloak] { display: none !important; }
-        /* 自定义滚动条 */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* 毛玻璃效果类 */
-        .glass {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        .dark .glass {
-            background: rgba(30, 41, 59, 0.85);
-        }
+        .glass { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .dark .glass { background: rgba(30, 41, 59, 0.85); }
     </style>
-    
-    <!-- 4. 引入本地 Alpine.js -->
     <script defer src="/static/alpine.min.js"></script>
 </head>
-<body class="bg-gray-50 text-slate-800 dark:bg-dark-bg dark:text-slate-200 h-screen flex flex-col transition-colors duration-300 font-sans" 
-      x-data="appData()" x-init="initApp()">
+<body class="bg-gray-50 text-slate-800 dark:bg-dark-bg dark:text-slate-200 h-screen flex flex-col font-sans" x-data="appData()" x-init="initApp()">
 
-    <!-- 全局通知 Toast -->
+    <!-- Toast 通知 -->
     <div class="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none">
         <template x-for="note in notifications" :key="note.id">
-            <div x-show="note.show" 
-                 x-transition:enter="transition ease-out duration-300"
-                 x-transition:enter-start="opacity-0 translate-x-8"
-                 x-transition:enter-end="opacity-100 translate-x-0"
-                 x-transition:leave="transition ease-in duration-200"
-                 x-transition:leave-start="opacity-100 translate-x-0"
-                 x-transition:leave-end="opacity-0 translate-x-8"
-                 class="pointer-events-auto bg-white dark:bg-dark-surface border-l-4 border-primary-500 shadow-lg rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
-                <div class="text-primary-500">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <div>
-                    <p class="font-medium text-sm" x-text="note.title"></p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400" x-text="note.message"></p>
-                </div>
+            <div x-show="note.show" x-transition class="pointer-events-auto bg-white dark:bg-dark-surface border-l-4 border-primary-500 shadow-lg rounded-r-lg p-4 flex items-center gap-3 min-w-[300px]">
+                <p class="font-medium text-sm" x-text="note.title"></p>
+                <p class="text-xs text-gray-500 dark:text-gray-400" x-text="note.message"></p>
             </div>
         </template>
     </div>
 
-    <!-- 登录模态框 -->
-    <div x-show="!token" 
-         x-transition:enter="transition ease-out duration-300"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
-        <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl w-full max-w-md p-8 border border-gray-100 dark:border-dark-border transform transition-all"
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 scale-95 translate-y-4"
-             x-transition:enter-end="opacity-100 scale-100 translate-y-0">
-            
-            <div class="text-center mb-8">
-                <div class="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-700 rounded-xl mx-auto flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-primary-500/30 mb-4">S</div>
-                <h2 class="text-2xl font-bold text-slate-800 dark:text-white">欢迎回到 SyncHub</h2>
-                <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">安全高效的局域网协作平台</p>
-            </div>
-
+    <!-- 登录模态框 (保持简洁，略去部分样式细节以聚焦核心) -->
+    <div x-show="!token" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" x-cloak>
+        <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl w-full max-w-md p-8 border border-gray-100 dark:border-dark-border">
+            <h2 class="text-2xl font-bold text-center mb-6">SyncHub 登录</h2>
             <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">用户名</label>
-                    <input type="text" x-model="loginForm.username" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all dark:text-white">
+                <input type="text" x-model="loginForm.username" placeholder="用户名" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border outline-none dark:text-white">
+                <input type="password" x-model="loginForm.password" placeholder="密码" @keyup.enter="login()" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border outline-none dark:text-white">
+                <div class="flex gap-3">
+                    <button @click="login()" class="flex-1 bg-primary-600 text-white py-3 rounded-xl font-semibold">登录</button>
+                    <button @click="register()" class="flex-1 border border-gray-200 dark:border-dark-border py-3 rounded-xl font-semibold">注册</button>
                 </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">密码</label>
-                    <input type="password" x-model="loginForm.password" @keyup.enter="login()" class="w-full px-4 py-3 rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all dark:text-white">
-                </div>
-                
-                <div class="pt-2 flex gap-3">
-                    <button @click="login()" class="flex-1 bg-primary-600 text-white py-3 rounded-xl font-semibold hover:bg-primary-700 active:scale-[0.98] transition-all shadow-lg shadow-primary-500/30">登录</button>
-                    <button @click="register()" class="flex-1 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-gray-200 dark:border-dark-border py-3 rounded-xl font-semibold hover:bg-gray-50 dark:hover:bg-slate-700 transition-all">注册</button>
-                </div>
-                <p x-show="loginMsg" x-text="loginMsg" class="text-center text-red-500 text-sm mt-2 animate-pulse"></p>
+                <p x-text="loginMsg" class="text-center text-red-500 text-sm"></p>
             </div>
         </div>
     </div>
 
-    <!-- 顶部导航 (Glassmorphism) -->
-    <nav class="glass sticky top-0 z-40 border-b border-gray-200/50 dark:border-dark-border/50 px-4 sm:px-6 py-3 flex justify-between items-center transition-colors duration-300">
+    <!-- 导航栏 -->
+    <nav class="glass sticky top-0 z-40 border-b border-gray-200/50 dark:border-dark-border/50 px-6 py-3 flex justify-between items-center">
         <div class="flex items-center gap-3">
-            <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">S</div>
-            <h1 class="text-lg font-bold text-slate-800 dark:text-white tracking-tight hidden sm:block">SyncHub</h1>
+            <div class="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white font-bold">S</div>
+            <h1 class="text-lg font-bold hidden sm:block">SyncHub</h1>
         </div>
-        
-        <div class="flex items-center gap-3 sm:gap-6" x-show="token" x-cloak>
-            <!-- 状态指示器 -->
-            <div class="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-dark-border transition-colors">
-                <span class="relative flex h-2.5 w-2.5">
-                  <span x-show="wsConnected" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-2.5 w-2.5" :class="wsConnected ? 'bg-green-500' : 'bg-red-500'"></span>
-                </span>
-                <span x-text="wsConnected ? '已连接' : '离线'" class="text-slate-600 dark:text-slate-300"></span>
+        <div class="flex items-center gap-4" x-show="token" x-cloak>
+            <div class="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-dark-border">
+                <span class="w-2.5 h-2.5 rounded-full" :class="wsConnected ? 'bg-green-500' : 'bg-red-500'"></span>
+                <span x-text="wsConnected ? '已连接' : '离线'"></span>
             </div>
-
-            <!-- 主题切换 -->
-            <div class="relative" x-data="{ open: false }" @click.outside="open = false">
-                <button @click="open = !open" class="p-2 rounded-lg text-slate-500 hover:bg-gray-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
-                    <!-- Sun Icon -->
-                    <svg x-show="currentThemeMode === 'light'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    <!-- Moon Icon -->
-                    <svg x-show="currentThemeMode === 'dark'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 24.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
-                    <!-- System Icon -->
-                    <svg x-show="currentThemeMode === 'system'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                </button>
-                
-                <div x-show="open" 
-                     x-transition:enter="transition ease-out duration-100"
-                     x-transition:enter-start="opacity-0 scale-95"
-                     x-transition:enter-end="opacity-100 scale-100"
-                     class="absolute right-0 mt-2 w-32 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-100 dark:border-dark-border py-1 z-50">
-                    <button @click="setTheme('light')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-2" :class="theme === 'light' ? 'text-primary-600 font-medium' : 'text-slate-600 dark:text-slate-300'">
-                        <span>☀️</span> 亮色
-                    </button>
-                    <button @click="setTheme('dark')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-2" :class="theme === 'dark' ? 'text-primary-600 font-medium' : 'text-slate-600 dark:text-slate-300'">
-                        <span>🌙</span> 暗色
-                    </button>
-                    <button @click="setTheme('system')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 flex items-center gap-2" :class="theme === 'system' ? 'text-primary-600 font-medium' : 'text-slate-600 dark:text-slate-300'">
-                        <span>💻</span> 系统
-                    </button>
-                </div>
-            </div>
-
-            <div class="h-6 w-px bg-gray-200 dark:bg-dark-border"></div>
-
-            <div class="flex items-center gap-3">
-                <span class="text-sm font-medium text-slate-700 dark:text-slate-200" x-text="currentUser"></span>
-                <button @click="logout()" class="text-sm text-slate-400 hover:text-red-500 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                </button>
-            </div>
+            <button @click="logout()" class="text-sm text-slate-400 hover:text-red-500">退出</button>
         </div>
     </nav>
 
-    <!-- 主体内容 -->
-    <main class="flex-1 overflow-hidden flex flex-col max-w-5xl mx-auto w-full p-4 sm:p-6 transition-all" x-show="token" x-cloak>
+    <!-- 主内容 -->
+    <main class="flex-1 overflow-hidden flex flex-col max-w-5xl mx-auto w-full p-4 sm:p-6" x-show="token" x-cloak>
         
         <!-- 标签页切换 -->
         <div class="flex space-x-1 bg-gray-100 dark:bg-dark-surface p-1.5 rounded-xl mb-6 w-fit border border-gray-200 dark:border-dark-border">
-            <button @click="activeTab = 'text'" 
-                    :class="activeTab === 'text' ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'" 
-                    class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">文本剪贴板</button>
-            <button @click="activeTab = 'file'" 
-                    :class="activeTab === 'file' ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'" 
-                    class="px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200">文件共享</button>
+            <button @click="activeTab = 'text'" :class="activeTab === 'text' ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500'" class="px-6 py-2 rounded-lg text-sm font-medium transition-all">文本剪贴板</button>
+            <button @click="activeTab = 'file'" :class="activeTab === 'file' ? 'bg-white dark:bg-slate-700 text-primary-600 dark:text-white shadow-sm' : 'text-slate-500'" class="px-6 py-2 rounded-lg text-sm font-medium transition-all">文件共享</button>
         </div>
 
-        <!-- 文本剪贴板区域 -->
-        <div x-show="activeTab === 'text'" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-x-4"
-             x-transition:enter-end="opacity-100 translate-x-0"
-             class="flex-1 flex flex-col overflow-hidden">
-            
-            <div class="bg-white dark:bg-dark-surface p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border mb-6 transition-colors">
-                <textarea x-model="newClipboard" class="w-full h-24 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl border-none focus:ring-2 focus:ring-primary-500/20 resize-none text-sm text-slate-700 dark:text-slate-200 placeholder-gray-400 transition-all" placeholder="在此粘贴或输入文本..."></textarea>
+        <!-- 文本区域 -->
+        <div x-show="activeTab === 'text'" class="flex-1 flex flex-col overflow-hidden">
+            <div class="bg-white dark:bg-dark-surface p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border mb-6">
+                <textarea x-model="newClipboard" class="w-full h-24 p-3 bg-gray-50 dark:bg-slate-800/50 rounded-xl border-none focus:ring-2 focus:ring-primary-500/20 resize-none text-sm dark:text-slate-200" placeholder="在此粘贴或输入文本..."></textarea>
+                
                 <div class="flex justify-between items-center mt-3">
-                    <input x-model="newTag" type="text" placeholder="标签 (可选)" class="bg-gray-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-lg text-xs border-none focus:ring-1 focus:ring-primary-500 w-32 text-slate-700 dark:text-slate-200 transition-colors">
-                    <button @click="submitClipboard()" class="bg-primary-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 active:scale-95 transition-all shadow-md shadow-primary-500/20">保存文本</button>
+                    <!-- 标签选择器组件 -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" @click.outside="open = false" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                            <span class="w-3 h-3 rounded-full" :class="getTagColor(selectedTag)"></span>
+                            <span x-text="selectedTag"></span>
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        
+                        <div x-show="open" x-transition class="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-100 dark:border-dark-border p-2 z-20">
+                            <div class="mb-2 px-2">
+                                <input type="text" x-model="newTagName" @keyup.enter="createTag()" placeholder="新建标签..." class="w-full text-xs px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border outline-none focus:border-primary-500 dark:text-white">
+                            </div>
+                            <div class="max-h-48 overflow-y-auto space-y-1">
+                                <template x-for="tag in tags" :key="tag.id">
+                                    <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer group">
+                                        <div @click="selectedTag = tag.name; open = false" class="flex items-center gap-2 flex-1">
+                                            <span class="w-3 h-3 rounded-full" :class="tag.color_bg"></span>
+                                            <span class="text-xs text-slate-700 dark:text-slate-300" x-text="tag.name"></span>
+                                        </div>
+                                        <button @click.stop="deleteTag(tag.id)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="submitClipboard()" class="bg-primary-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-700 shadow-md shadow-primary-500/20">保存文本</button>
                 </div>
             </div>
 
             <div class="flex-1 overflow-y-auto space-y-3 pr-2 pb-4 custom-scrollbar">
                 <template x-for="(item, index) in clipboardItems" :key="item.id">
-                    <div class="bg-white dark:bg-dark-surface p-4 rounded-xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-md hover:border-primary-200 dark:hover:border-primary-900 transition-all group animate-fade-in-up" :style="`animation-delay: ${index * 50}ms`">
+                    <div class="bg-white dark:bg-dark-surface p-4 rounded-xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-md transition-all animate-fade-in-up" :style="`animation-delay: ${index * 50}ms`">
                         <div class="flex justify-between items-start mb-2">
                             <div class="flex items-center gap-2">
-                                <span class="bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wide border border-primary-100 dark:border-primary-800/50" x-text="item.tag"></span>
+                                <span :class="getTagStyle(item.tag)" class="text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wide border border-transparent" x-text="item.tag"></span>
                                 <span class="text-xs text-slate-400" x-text="item.user + ' • ' + item.created_at"></span>
                             </div>
-                            <button @click="copyText(item.content)" class="text-slate-400 hover:text-primary-500 p-1 rounded-md hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-all" title="复制">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
+                            <button @click="copyText(item.content)" class="text-slate-400 hover:text-primary-500 p-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
                         </div>
                         <pre class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-slate-800/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700/50" x-text="item.content"></pre>
                     </div>
@@ -252,27 +144,54 @@
             </div>
         </div>
 
-        <!-- 文件共享区域 -->
-        <div x-show="activeTab === 'file'" 
-             x-transition:enter="transition ease-out duration-300"
-             x-transition:enter-start="opacity-0 translate-x-4"
-             x-transition:enter-end="opacity-100 translate-x-0"
-             class="flex-1 flex flex-col overflow-hidden">
-            
-            <div 
-                class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-2xl p-8 text-center mb-6 transition-all duration-300 cursor-pointer relative group"
-                @dragover.prevent="dragOver = true"
-                @dragleave.prevent="dragOver = false"
-                @drop.prevent="handleDrop($event)"
-                :class="dragOver ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 scale-[1.01]' : 'hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-slate-800/50'"
-            >
-                <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleFileSelect($event)">
-                <div class="pointer-events-none transition-transform duration-300 group-hover:-translate-y-1">
-                    <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+        <!-- 文件区域 -->
+        <div x-show="activeTab === 'file'" class="flex-1 flex flex-col overflow-hidden">
+            <!-- 文件上传区域：包含标签选择 -->
+            <div class="bg-white dark:bg-dark-surface p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-dark-border mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-sm font-medium text-slate-700 dark:text-slate-300">上传文件</h3>
+                    
+                    <!-- 复用标签选择器 (File Tab) -->
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" @click.outside="open = false" class="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 dark:border-dark-border hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">
+                            <span class="text-gray-500">标签:</span>
+                            <span class="w-3 h-3 rounded-full" :class="getTagColor(selectedTag)"></span>
+                            <span x-text="selectedTag"></span>
+                            <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div x-show="open" x-transition class="absolute top-full right-0 mt-2 w-56 bg-white dark:bg-dark-surface rounded-xl shadow-xl border border-gray-100 dark:border-dark-border p-2 z-20">
+                            <div class="mb-2 px-2">
+                                <input type="text" x-model="newTagName" @keyup.enter="createTag()" placeholder="新建标签..." class="w-full text-xs px-2 py-1.5 rounded bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-dark-border outline-none focus:border-primary-500 dark:text-white">
+                            </div>
+                            <div class="max-h-48 overflow-y-auto space-y-1">
+                                <template x-for="tag in tags" :key="tag.id">
+                                    <div class="flex items-center justify-between px-2 py-1.5 rounded hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer group">
+                                        <div @click="selectedTag = tag.name; open = false" class="flex items-center gap-2 flex-1">
+                                            <span class="w-3 h-3 rounded-full" :class="tag.color_bg"></span>
+                                            <span class="text-xs text-slate-700 dark:text-slate-300" x-text="tag.name"></span>
+                                        </div>
+                                        <button @click.stop="deleteTag(tag.id)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                        </button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
                     </div>
-                    <p class="text-slate-700 dark:text-slate-200 font-medium">点击或拖拽文件至此上传</p>
-                    <p class="text-xs text-slate-400 mt-1">支持任意格式文件，自动同步</p>
+                </div>
+
+                <div 
+                    class="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 text-center transition-all duration-300 cursor-pointer relative group hover:border-primary-400 hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                    @dragover.prevent="dragOver = true"
+                    @dragleave.prevent="dragOver = false"
+                    @drop.prevent="handleDrop($event)"
+                    :class="dragOver ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : ''"
+                >
+                    <input type="file" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" @change="handleFileSelect($event)">
+                    <div class="pointer-events-none">
+                        <p class="text-sm text-slate-600 dark:text-slate-300">点击或拖拽文件至此上传</p>
+                        <p class="text-xs text-slate-400 mt-1">将使用当前选择的标签: <span x-text="selectedTag" class="font-medium text-primary-500"></span></p>
+                    </div>
                 </div>
             </div>
 
@@ -284,7 +203,10 @@
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="file.filename"></p>
+                                <div class="flex items-center gap-2">
+                                    <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="file.filename"></p>
+                                    <span :class="getTagStyle(file.tag)" class="text-[10px] px-1.5 py-0.5 rounded font-medium" x-text="file.tag"></span>
+                                </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
                                     <span x-text="file.size"></span>
                                     <span class="w-1 h-1 bg-slate-300 rounded-full"></span>
@@ -294,9 +216,7 @@
                                 </div>
                             </div>
                         </div>
-                        <a :href="'/api/download/' + file.id" class="text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 p-2 rounded-full transition-all" title="下载">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        </a>
+                        <a :href="'/api/download/' + file.id" class="text-slate-400 hover:text-primary-600 p-2"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
                     </div>
                 </template>
             </div>
@@ -313,63 +233,120 @@
                 loginMsg: '',
                 clipboardItems: [],
                 fileItems: [],
+                tags: [], // 存储所有标签数据
+                selectedTag: 'General', // 当前选中的标签
+                newTagName: '', // 新建标签输入框
                 newClipboard: '',
-                newTag: '',
                 dragOver: false,
                 ws: null,
                 wsConnected: false,
                 notifications: [],
-                theme: localStorage.getItem('synchub_theme') || 'system',
-                
-                // 计算属性：当前实际显示的模式（用于图标切换）
-                get currentThemeMode() {
-                    if (this.theme === 'system') {
-                        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                    }
-                    return this.theme;
-                },
 
                 initApp() {
-                    this.applyTheme();
-                    // 监听系统主题变化
-                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-                        if (this.theme === 'system') this.applyTheme();
-                    });
-
                     if (this.token) {
                         this.fetchData();
                         this.connectWS();
                     }
                 },
 
-                setTheme(val) {
-                    this.theme = val;
-                    localStorage.setItem('synchub_theme', val);
-                    this.applyTheme();
+                // --- 辅助：获取标签样式 ---
+                getTagStyle(tagName) {
+                    const tag = this.tags.find(t => t.name === tagName);
+                    if (tag) return `${tag.color_bg} ${tag.color_text}`;
+                    return 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'; // 默认样式
+                },
+                getTagColor(tagName) {
+                    const tag = this.tags.find(t => t.name === tagName);
+                    return tag ? tag.color_bg : 'bg-gray-200';
                 },
 
-                applyTheme() {
-                    const isDark = this.theme === 'dark' || (this.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                    if (isDark) {
-                        document.documentElement.classList.add('dark');
-                    } else {
-                        document.documentElement.classList.remove('dark');
+                // --- 标签管理 ---
+                async createTag() {
+                    if (!this.newTagName.trim()) return;
+                    try {
+                        const res = await fetch('/api/tags', {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.newTagName })
+                        });
+                        if (res.ok) {
+                            this.newTagName = '';
+                            this.fetchTags(); // 刷新标签列表
+                            this.showNotify('标签已创建', '现在可以使用新标签了');
+                        }
+                    } catch (e) { console.error(e); }
+                },
+
+                async deleteTag(id) {
+                    if (!confirm('确定删除此标签吗？')) return;
+                    await fetch(`/api/tags/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    this.fetchTags();
+                    if (this.selectedTag === this.tags.find(t => t.id === id)?.name) {
+                        this.selectedTag = 'General';
                     }
                 },
 
+                async fetchTags() {
+                    const res = await fetch('/api/tags', { headers: { 'Authorization': `Bearer ${this.token}` } });
+                    if (res.ok) this.tags = await res.json();
+                },
+
+                // --- 核心数据获取 ---
+                async fetchData() {
+                    const headers = { 'Authorization': `Bearer ${this.token}` };
+                    await this.fetchTags(); // 先获取标签以便渲染颜色
+                    
+                    const resClip = await fetch('/api/clipboard', { headers });
+                    if (resClip.ok) this.clipboardItems = await resClip.json();
+                    
+                    const resFile = await fetch('/api/files', { headers });
+                    if (resFile.ok) this.fileItems = await resFile.json();
+                },
+
+                // --- 提交逻辑更新 ---
+                async submitClipboard() {
+                    if (!this.newClipboard.trim()) return;
+                    const formData = new FormData();
+                    formData.append('content', this.newClipboard);
+                    formData.append('tag', this.selectedTag); // 使用下拉选中的标签
+                    
+                    await fetch('/api/clipboard', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.token}` },
+                        body: formData
+                    });
+                    this.newClipboard = '';
+                    this.fetchData();
+                    this.showNotify('已保存', '文本已同步');
+                },
+
+                async uploadFile(file) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('tag', this.selectedTag); // 使用下拉选中的标签
+                    
+                    this.showNotify('正在上传', `文件 ${file.name} 正在上传...`);
+                    const res = await fetch('/api/upload', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${this.token}` },
+                        body: formData
+                    });
+                    if (res.ok) {
+                        this.fetchData();
+                        this.showNotify('上传完成', '文件已共享');
+                    }
+                },
+
+                // --- 其他原有逻辑 (Login, WS, etc.) ---
                 showNotify(title, message) {
                     const id = Date.now();
                     this.notifications.push({ id, title, message, show: true });
                     setTimeout(() => {
                         const note = this.notifications.find(n => n.id === id);
                         if (note) note.show = false;
-                        // 清理数组
-                        setTimeout(() => {
-                            this.notifications = this.notifications.filter(n => n.id !== id);
-                        }, 300);
+                        setTimeout(() => { this.notifications = this.notifications.filter(n => n.id !== id); }, 300);
                     }, 3000);
                 },
-
                 async login() {
                     const formData = new FormData();
                     formData.append('username', this.loginForm.username);
@@ -385,11 +362,8 @@
                         this.fetchData();
                         this.connectWS();
                         this.showNotify('登录成功', '欢迎回来 ' + this.currentUser);
-                    } catch (e) {
-                        this.loginMsg = '用户名或密码错误';
-                    }
+                    } catch (e) { this.loginMsg = '用户名或密码错误'; }
                 },
-
                 async register() {
                     const formData = new FormData();
                     formData.append('username', this.loginForm.username);
@@ -399,11 +373,8 @@
                         if (!res.ok) throw new Error('注册失败');
                         this.loginMsg = '注册成功，请登录';
                         this.showNotify('注册成功', '请使用新账号登录');
-                    } catch (e) {
-                        this.loginMsg = '用户已存在或输入无效';
-                    }
+                    } catch (e) { this.loginMsg = '用户已存在或输入无效'; }
                 },
-
                 logout() {
                     this.token = '';
                     this.currentUser = '';
@@ -412,88 +383,22 @@
                     if (this.ws) this.ws.close();
                     this.showNotify('已退出', '期待下次见面');
                 },
-
-                async fetchData() {
-                    const headers = { 'Authorization': `Bearer ${this.token}` };
-                    
-                    const resClip = await fetch('/api/clipboard', { headers });
-                    if (resClip.ok) this.clipboardItems = await resClip.json();
-                    
-                    const resFile = await fetch('/api/files', { headers });
-                    if (resFile.ok) this.fileItems = await resFile.json();
-                },
-
-                async submitClipboard() {
-                    if (!this.newClipboard.trim()) return;
-                    const formData = new FormData();
-                    formData.append('content', this.newClipboard);
-                    formData.append('tag', this.newTag || 'General');
-                    
-                    await fetch('/api/clipboard', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.token}` },
-                        body: formData
-                    });
-                    this.newClipboard = '';
-                    this.fetchData();
-                    this.showNotify('已保存', '文本已同步到剪贴板');
-                },
-
                 async copyText(text) {
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        this.showNotify('复制成功', '内容已复制到剪贴板');
-                    } catch (err) {
-                        console.error('复制失败', err);
-                    }
+                    try { await navigator.clipboard.writeText(text); this.showNotify('复制成功', '内容已复制到剪贴板'); } catch (err) { console.error(err); }
                 },
-
-                handleFileSelect(e) {
-                    const file = e.target.files[0];
-                    if (file) this.uploadFile(file);
-                },
-
-                handleDrop(e) {
-                    this.dragOver = false;
-                    const file = e.dataTransfer.files[0];
-                    if (file) this.uploadFile(file);
-                },
-
-                async uploadFile(file) {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    
-                    this.showNotify('正在上传', `文件 ${file.name} 正在上传...`);
-                    
-                    const res = await fetch('/api/upload', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.token}` },
-                        body: formData
-                    });
-                    
-                    if (res.ok) {
-                        this.fetchData();
-                        this.showNotify('上传完成', '文件已共享');
-                    } else {
-                        this.showNotify('上传失败', '请重试');
-                    }
-                },
-
+                handleFileSelect(e) { const file = e.target.files[0]; if (file) this.uploadFile(file); },
+                handleDrop(e) { this.dragOver = false; const file = e.dataTransfer.files[0]; if (file) this.uploadFile(file); },
                 connectWS() {
                     if (this.ws) this.ws.close();
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
-                    
                     this.ws.onopen = () => { this.wsConnected = true; };
-                    this.ws.onclose = () => { 
-                        this.wsConnected = false; 
-                        setTimeout(() => this.token && this.connectWS(), 3000); 
-                    };
+                    this.ws.onclose = () => { this.wsConnected = false; setTimeout(() => this.token && this.connectWS(), 3000); };
                     this.ws.onmessage = (event) => {
                         if (event.data.startsWith('update:')) {
-                            this.fetchData();
-                            const type = event.data.includes('clipboard') ? '新文本' : '新文件';
-                            this.showNotify('收到更新', `有${type}共享进来`);
+                            if (event.data === 'update:tags') this.fetchTags(); // 专门处理标签更新
+                            else this.fetchData();
+                            this.showNotify('收到更新', '内容已同步');
                         }
                     };
                 }
