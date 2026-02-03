@@ -4,7 +4,7 @@ services:
     container_name: synchub
     restart: always
     ports:
-      - "8000:8000"
+      - "7410:8000"
     volumes:
       - uploads:/app/uploads  # 持久化文件
       - data:/app/data        # 持久化数据库
