@@ -23,7 +23,7 @@ from starlette.requests import Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from sqlalchemy import func
-
+from jose import jwt, JWTError
 from . import models, database, auth
 
 # --- 配置 ---
@@ -279,12 +279,25 @@ async def upload_file(
 @app.get("/api/download/{file_id}")
 async def download_file(
     file_id: int,
+    token: str,  # 1. 接收 URL 中的 token 参数
     db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
 ):
+    # 2. 手动验证 Token
+    try:
+        payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+        username = payload.get("sub")
+        if not isinstance(username, str):
+            raise HTTPException(status_code=401, detail="Invalid token")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    # 3. 验证通过，查找文件
     file_item = db.query(models.FileItem).filter(models.FileItem.id == file_id).first()
     if not file_item or not os.path.exists(file_item.filepath):
         raise HTTPException(status_code=404, detail="File not found")
+
     return FileResponse(file_item.filepath, filename=file_item.filename)
 
 

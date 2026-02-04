@@ -225,7 +225,7 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="file.filename"></p>
-                                    <!-- 修改：添加 uppercase 类 -->
+                                    <!-- 修复：添加 uppercase 类，并拼接 token -->
                                     <span :class="getTagStyle(file.tag)" class="text-[10px] px-1.5 py-0.5 rounded font-medium uppercase" x-text="file.tag"></span>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
@@ -237,7 +237,7 @@
                                 </div>
                             </div>
                         </div>
-                        <a :href="'/api/download/' + file.id" class="text-slate-400 hover:text-primary-600 dark:text-slate-500 dark:hover:text-primary-400 p-2 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
+                        <a :href="'/api/download/' + file.id + '?token=' + token" class="text-slate-400 hover:text-primary-600 dark:text-slate-500 dark:hover:text-primary-400 p-2 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
                     </div>
                 </template>
             </div>
@@ -294,7 +294,6 @@
                     else document.documentElement.classList.remove('dark');
                 },
 
-                // 修改：使用 toLowerCase() 进行大小写不敏感匹配
                 getTagStyle(tagName) {
                     const tag = this.tags.find(t => t.name.toLowerCase() === tagName.toLowerCase());
                     if (tag) return `${tag.color_bg} ${tag.color_text}`;
