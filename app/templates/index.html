@@ -61,7 +61,7 @@
                     <button @click="login()" class="flex-1 bg-primary-600 text-white py-3 rounded-xl font-semibold hover:bg-primary-700 transition-colors">登录</button>
                     <button @click="register()" class="flex-1 border border-gray-200 dark:border-dark-border py-3 rounded-xl font-semibold dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors">注册</button>
                 </div>
-                <p x-text="loginMsg" class="text-center text-red-500 text-sm"></p>
+                <p x-text="loginMsg" class="text-center text-red-500 text-sm font-medium"></p>
             </div>
         </div>
     </div>
@@ -157,7 +157,16 @@
                                 <span :class="getTagStyle(item.tag)" class="text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wide border border-transparent" x-text="item.tag"></span>
                                 <span class="text-xs text-slate-400" x-text="item.user + ' • ' + item.created_at"></span>
                             </div>
-                            <button @click="copyText(item.content)" class="text-slate-400 hover:text-primary-500 dark:text-slate-500 dark:hover:text-primary-400 p-1 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg></button>
+                            <div class="flex items-center gap-1">
+                                <!-- 复制按钮 -->
+                                <button @click="copyText(item.content)" class="text-slate-400 hover:text-primary-500 dark:text-slate-500 dark:hover:text-primary-400 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors" title="复制">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                                <!-- 删除按钮 (仅所有者可见) -->
+                                <button x-show="item.is_owner" @click="deleteClipboardItem(item.id)" class="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="删除">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
                         </div>
                         <pre class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap font-mono bg-gray-50 dark:bg-slate-800/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700/50" x-text="item.content"></pre>
                     </div>
@@ -225,7 +234,6 @@
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2">
                                     <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate" x-text="file.filename"></p>
-                                    <!-- 修复：添加 uppercase 类，并拼接 token -->
                                     <span :class="getTagStyle(file.tag)" class="text-[10px] px-1.5 py-0.5 rounded font-medium uppercase" x-text="file.tag"></span>
                                 </div>
                                 <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5">
@@ -237,7 +245,15 @@
                                 </div>
                             </div>
                         </div>
-                        <a :href="'/api/download/' + file.id + '?token=' + token" class="text-slate-400 hover:text-primary-600 dark:text-slate-500 dark:hover:text-primary-400 p-2 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg></a>
+                        <div class="flex items-center gap-1">
+                            <a :href="'/api/download/' + file.id + '?token=' + token" class="text-slate-400 hover:text-primary-600 dark:text-slate-500 dark:hover:text-primary-400 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors" title="下载">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            </a>
+                            <!-- 删除按钮 (仅所有者可见) -->
+                            <button x-show="file.is_owner" @click="deleteFileItem(file.id)" class="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="删除">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </template>
             </div>
@@ -382,6 +398,26 @@
                     }
                 },
 
+                // --- 新增：删除剪贴板 ---
+                async deleteClipboardItem(id) {
+                    if (!confirm('确定删除这条记录吗？')) return;
+                    const res = await fetch(`/api/clipboard/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    if (res.ok) {
+                        this.fetchData();
+                        this.showNotify('已删除', '文本记录已删除');
+                    }
+                },
+
+                // --- 新增：删除文件 ---
+                async deleteFileItem(id) {
+                    if (!confirm('确定删除这个文件吗？此操作不可恢复。')) return;
+                    const res = await fetch(`/api/files/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    if (res.ok) {
+                        this.fetchData();
+                        this.showNotify('已删除', '文件已删除');
+                    }
+                },
+
                 showNotify(title, message) {
                     const id = Date.now();
                     this.notifications.push({ id, title, message, show: true });
@@ -391,13 +427,18 @@
                         setTimeout(() => { this.notifications = this.notifications.filter(n => n.id !== id); }, 300);
                     }, 3000);
                 },
+
                 async login() {
                     const formData = new FormData();
                     formData.append('username', this.loginForm.username);
                     formData.append('password', this.loginForm.password);
                     try {
                         const res = await fetch('/token', { method: 'POST', body: formData });
-                        if (!res.ok) throw new Error('登录失败');
+                        if (!res.ok) {
+                            // --- 修改：捕获 404 错误并提示注册 ---
+                            if (res.status === 404) throw new Error('用户不存在，请先注册');
+                            throw new Error('密码错误');
+                        }
                         const data = await res.json();
                         this.token = data.access_token;
                         this.currentUser = this.loginForm.username;
@@ -406,8 +447,12 @@
                         this.fetchData();
                         this.connectWS();
                         this.showNotify('登录成功', '欢迎回来 ' + this.currentUser);
-                    } catch (e) { this.loginMsg = '用户名或密码错误'; }
+                        this.loginMsg = ''; // 清空错误信息
+                    } catch (e) {
+                        this.loginMsg = e.message;
+                    }
                 },
+
                 async register() {
                     const formData = new FormData();
                     formData.append('username', this.loginForm.username);
@@ -419,6 +464,7 @@
                         this.showNotify('注册成功', '请使用新账号登录');
                     } catch (e) { this.loginMsg = '用户已存在或输入无效'; }
                 },
+
                 logout() {
                     this.token = '';
                     this.currentUser = '';
@@ -427,9 +473,38 @@
                     if (this.ws) this.ws.close();
                     this.showNotify('已退出', '期待下次见面');
                 },
+
+                // --- 修改：复制功能降级方案 ---
                 async copyText(text) {
-                    try { await navigator.clipboard.writeText(text); this.showNotify('复制成功', '内容已复制到剪贴板'); } catch (err) { console.error(err); }
+                    if (!navigator.clipboard) {
+                        // 降级方案：使用 textarea
+                        const textArea = document.createElement("textarea");
+                        textArea.value = text;
+                        textArea.style.position = "fixed"; // 避免滚动到底部
+                        document.body.appendChild(textArea);
+                        textArea.focus();
+                        textArea.select();
+                        try {
+                            document.execCommand('copy');
+                            this.showNotify('复制成功', '内容已复制到剪贴板');
+                        } catch (err) {
+                            console.error('Fallback: Oops, unable to copy', err);
+                            this.showNotify('复制失败', '请手动复制');
+                        }
+                        document.body.removeChild(textArea);
+                        return;
+                    }
+                    
+                    // 标准方案
+                    try { 
+                        await navigator.clipboard.writeText(text); 
+                        this.showNotify('复制成功', '内容已复制到剪贴板'); 
+                    } catch (err) { 
+                        console.error(err); 
+                        this.showNotify('复制失败', '请检查浏览器权限');
+                    }
                 },
+
                 handleFileSelect(e) { const file = e.target.files[0]; if (file) this.uploadFile(file); },
                 handleDrop(e) { this.dragOver = false; const file = e.dataTransfer.files[0]; if (file) this.uploadFile(file); },
                 connectWS() {
