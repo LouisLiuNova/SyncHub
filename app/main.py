@@ -345,7 +345,22 @@ async def download_file(
 
 
 @app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket, token: Optional[str] = None):
+    # 验证 token
+    if token:
+        try:
+            payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
+            if payload.get("sub") is None:
+                await websocket.close(code=4001)
+                return
+        except JWTError:
+            await websocket.close(code=4001)
+            return
+    else:
+        # 没有 token，拒绝连接
+        await websocket.close(code=4001)
+        return
+
     await manager.connect(websocket)
     try:
         while True:

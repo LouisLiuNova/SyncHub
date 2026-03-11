@@ -279,7 +279,31 @@
                 wsConnected: false,
                 notifications: [],
                 theme: localStorage.getItem('synchub_theme') || 'system',
-                
+
+                // 统一 API 请求函数，自动添加 token 并处理 401 错误
+                async apiRequest(url, options = {}) {
+                    const defaultOptions = {
+                        headers: { 'Authorization': `Bearer ${this.token}`, ...options.headers }
+                    };
+                    const mergedOptions = { ...options, headers: { ...defaultOptions.headers, ...options.headers } };
+
+                    const res = await fetch(url, mergedOptions);
+                    if (res.status === 401) {
+                        this.handleTokenExpired();
+                        throw new Error('认证已过期');
+                    }
+                    return res;
+                },
+
+                handleTokenExpired() {
+                    this.token = '';
+                    this.currentUser = '';
+                    localStorage.removeItem('synchub_token');
+                    localStorage.removeItem('synchub_user');
+                    if (this.ws) this.ws.close();
+                    this.showNotify('登录已过期', '请重新登录');
+                },
+
                 get currentThemeMode() {
                     if (this.theme === 'system') {
                         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -323,9 +347,9 @@
                 async createTag() {
                     if (!this.newTagName.trim()) return;
                     try {
-                        const res = await fetch('/api/tags', {
+                        const res = await this.apiRequest('/api/tags', {
                             method: 'POST',
-                            headers: { 'Authorization': `Bearer ${this.token}`, 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ name: this.newTagName })
                         });
                         if (res.ok) {
@@ -338,7 +362,7 @@
 
                 async deleteTag(id) {
                     if (!confirm('确定删除此标签吗？')) return;
-                    const res = await fetch(`/api/tags/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    const res = await this.apiRequest(`/api/tags/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         this.fetchTags();
                         if (this.selectedTag === this.tags.find(t => t.id === id)?.name) {
@@ -350,18 +374,17 @@
                 },
 
                 async fetchTags() {
-                    const res = await fetch('/api/tags', { headers: { 'Authorization': `Bearer ${this.token}` } });
+                    const res = await this.apiRequest('/api/tags');
                     if (res.ok) this.tags = await res.json();
                 },
 
                 async fetchData() {
-                    const headers = { 'Authorization': `Bearer ${this.token}` };
                     await this.fetchTags();
-                    
-                    const resClip = await fetch('/api/clipboard', { headers });
+
+                    const resClip = await this.apiRequest('/api/clipboard');
                     if (resClip.ok) this.clipboardItems = await resClip.json();
-                    
-                    const resFile = await fetch('/api/files', { headers });
+
+                    const resFile = await this.apiRequest('/api/files');
                     if (resFile.ok) this.fileItems = await resFile.json();
                 },
 
@@ -370,10 +393,9 @@
                     const formData = new FormData();
                     formData.append('content', this.newClipboard);
                     formData.append('tag', this.selectedTag);
-                    
-                    await fetch('/api/clipboard', {
+
+                    await this.apiRequest('/api/clipboard', {
                         method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.token}` },
                         body: formData
                     });
                     this.newClipboard = '';
@@ -385,11 +407,10 @@
                     const formData = new FormData();
                     formData.append('file', file);
                     formData.append('tag', this.selectedTag);
-                    
+
                     this.showNotify('正在上传', `文件 ${file.name} 正在上传...`);
-                    const res = await fetch('/api/upload', {
+                    const res = await this.apiRequest('/api/upload', {
                         method: 'POST',
-                        headers: { 'Authorization': `Bearer ${this.token}` },
                         body: formData
                     });
                     if (res.ok) {
@@ -401,7 +422,7 @@
                 // --- 新增：删除剪贴板 ---
                 async deleteClipboardItem(id) {
                     if (!confirm('确定删除这条记录吗？')) return;
-                    const res = await fetch(`/api/clipboard/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    const res = await this.apiRequest(`/api/clipboard/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         this.fetchData();
                         this.showNotify('已删除', '文本记录已删除');
@@ -411,7 +432,7 @@
                 // --- 新增：删除文件 ---
                 async deleteFileItem(id) {
                     if (!confirm('确定删除这个文件吗？此操作不可恢复。')) return;
-                    const res = await fetch(`/api/files/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${this.token}` } });
+                    const res = await this.apiRequest(`/api/files/${id}`, { method: 'DELETE' });
                     if (res.ok) {
                         this.fetchData();
                         this.showNotify('已删除', '文件已删除');
@@ -510,9 +531,16 @@
                 connectWS() {
                     if (this.ws) this.ws.close();
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+                    this.ws = new WebSocket(`${protocol}//${window.location.host}/ws?token=${this.token}`);
                     this.ws.onopen = () => { this.wsConnected = true; };
-                    this.ws.onclose = () => { this.wsConnected = false; setTimeout(() => this.token && this.connectWS(), 3000); };
+                    this.ws.onclose = (e) => {
+                        if (e.code === 4001) {
+                            this.handleTokenExpired();
+                        } else {
+                            this.wsConnected = false;
+                            setTimeout(() => this.token && this.connectWS(), 3000);
+                        }
+                    };
                     this.ws.onmessage = (event) => {
                         if (event.data.startsWith('update:')) {
                             if (event.data === 'update:tags') this.fetchTags();
